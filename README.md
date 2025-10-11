@@ -1,2 +1,2 @@
-# pomo-go
-Pomodoro counter CLI application implemented in Go. Focus booster.
+# pomcli
+Pomodoro counter CLI application. Focus booster.
