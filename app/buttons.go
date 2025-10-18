@@ -43,7 +43,9 @@ func newButtonSet(ctx context.Context, w *widgets, redrawCh chan<- bool) (*butto
 
 func initStartButton(ctx context.Context, redrawCh chan<- bool) (*button.Button, error) {
 	return button.New("[s]tart", func() error {
-		redrawCh <- true
+		go func() {
+			redrawCh <- true
+		}()
 		return nil
 	},
 		button.Height(2),
@@ -56,7 +58,9 @@ func initStartButton(ctx context.Context, redrawCh chan<- bool) (*button.Button,
 
 func initPauseButton(ctx context.Context, redrawCh chan<- bool) (*button.Button, error) {
 	return button.New("[p]ause", func() error {
-		redrawCh <- true
+		go func() {
+			redrawCh <- true
+		}()
 		return nil
 	},
 		button.Height(2),
@@ -68,7 +72,9 @@ func initPauseButton(ctx context.Context, redrawCh chan<- bool) (*button.Button,
 
 func initIncrementButton(ctx context.Context, redrawCh chan<- bool) (*button.Button, error) {
 	return button.New("[+]", func() error {
-		redrawCh <- true
+		go func() {
+			redrawCh <- true
+		}()
 		return nil
 	},
 		button.Height(1),
@@ -80,7 +86,9 @@ func initIncrementButton(ctx context.Context, redrawCh chan<- bool) (*button.But
 
 func initDecrementButton(ctx context.Context, redrawCh chan<- bool) (*button.Button, error) {
 	return button.New("[-]", func() error {
-		redrawCh <- true
+		go func() {
+			redrawCh <- true
+		}()
 		return nil
 	},
 		button.Height(1),

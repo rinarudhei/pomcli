@@ -7,7 +7,10 @@ import (
 	"github.com/mum4k/termdash/cell"
 	"github.com/mum4k/termdash/widgets/segmentdisplay"
 	"github.com/mum4k/termdash/widgets/text"
+	"github.com/rinarudhei/pomcli/session"
 )
+
+type Tab string
 
 type widgets struct {
 	timerTitle       *text.Text
@@ -17,18 +20,18 @@ type widgets struct {
 	commitsT         *text.Text
 	guide            *text.Text
 	updateTimerTitle chan string
-	updateSegDis     chan string
+	updateSegDis     chan []string
 	updateHistoryT   chan string
 	updateSummaryT   chan string
 	updateCommitsT   chan string
 }
 
-func (w *widgets) update(timerTitle, segDis, historyT, summaryT, commitsT string, redrawCh chan<- bool) {
+func (w *widgets) update(timerTitle, historyT, summaryT, commitsT string, segDis []string, redrawCh chan<- bool) {
 	if timerTitle != "" {
 		w.updateTimerTitle <- timerTitle
 	}
 
-	if segDis != "" {
+	if len(segDis) > 0 {
 		w.updateSegDis <- segDis
 	}
 
@@ -49,7 +52,7 @@ func (w *widgets) update(timerTitle, segDis, historyT, summaryT, commitsT string
 
 func newWidgets(ctx context.Context, errCh chan<- error) (*widgets, error) {
 	w := &widgets{}
-	w.updateSegDis = make(chan string)
+	w.updateSegDis = make(chan []string)
 	w.updateHistoryT = make(chan string)
 	w.updateSummaryT = make(chan string)
 	w.updateCommitsT = make(chan string)
@@ -111,8 +114,8 @@ func newTimerTitle(ctx context.Context, updateText <-chan string, errCh chan<- e
 	return t, nil
 }
 
-func newSegDis(ctx context.Context, updateText <-chan string, errCh chan<- error) (*segmentdisplay.SegmentDisplay, error) {
-	sd, err := segmentdisplay.New(segmentdisplay.AlignHorizontal(align.HorizontalRight))
+func newSegDis(ctx context.Context, updateText <-chan []string, errCh chan<- error) (*segmentdisplay.SegmentDisplay, error) {
+	sd, err := segmentdisplay.New(segmentdisplay.AlignHorizontal(align.HorizontalCenter))
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +132,16 @@ func newSegDis(ctx context.Context, updateText <-chan string, errCh chan<- error
 			select {
 			case t := <-updateText:
 				sd.Reset()
-				errCh <- sd.Write([]*segmentdisplay.TextChunk{segmentdisplay.NewChunk(t)})
+				var wOpt segmentdisplay.WriteOption
+				switch t[1] {
+				case session.PomodoroSession:
+					wOpt = segmentdisplay.WriteCellOpts(cell.FgColor(cell.ColorRed))
+				case session.ShortBreakSession:
+					wOpt = segmentdisplay.WriteCellOpts(cell.FgColor(cell.ColorYellow))
+				case session.LongBreakSession:
+					wOpt = segmentdisplay.WriteCellOpts(cell.FgColor(cell.ColorLime))
+				}
+				errCh <- sd.Write([]*segmentdisplay.TextChunk{segmentdisplay.NewChunk(t[0], wOpt)})
 			case <-ctx.Done():
 				return
 			}

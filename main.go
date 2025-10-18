@@ -5,10 +5,14 @@ import (
 	"time"
 
 	"github.com/rinarudhei/pomcli/app"
+	"github.com/rinarudhei/pomcli/session"
+	"github.com/rinarudhei/pomcli/session/repository"
 )
 
 func main() {
-	a, err := app.NewApp(50*time.Minute, 10*time.Minute, 60*time.Minute)
+	repo := repository.NewRepository()
+	s := session.NewSession(repo, 25*time.Minute, 5*time.Minute, 15*time.Minute)
+	a, err := app.NewApp(s)
 	if err != nil {
 		os.Exit(1)
 	}
