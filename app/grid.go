@@ -11,7 +11,8 @@ import (
 func newGrid(bs *buttonSet, w *widgets, t terminalapi.Terminal) (*container.Container, error) {
 	builder := grid.New()
 	builder.Add(
-		grid.RowHeightPercWithOpts(50, []container.Option{container.BorderTitle("Pomodoro <Press tab to switch>"), container.Border(linestyle.Round)},
+		grid.RowHeightPercWithOpts(5, []container.Option{container.AlignHorizontal(align.HorizontalCenter), container.AlignVertical(align.VerticalMiddle), container.PaddingLeftPercent(47)}, grid.Widget(w.timerTitle, container.AlignHorizontal(align.HorizontalCenter))),
+		grid.RowHeightPercWithOpts(60, []container.Option{container.BorderTitle("<Press tab to switch>"), container.Border(linestyle.Round)},
 			grid.ColWidthPerc(20),
 			grid.ColWidthPerc(60,
 				grid.RowHeightPerc(20),
@@ -27,7 +28,7 @@ func newGrid(bs *buttonSet, w *widgets, t terminalapi.Terminal) (*container.Cont
 			),
 			grid.ColWidthPerc(20),
 		),
-		grid.RowHeightPerc(48,
+		grid.RowHeightPerc(33,
 			grid.ColWidthPercWithOpts(50, []container.Option{container.BorderTitle("Git commits"), container.Border(linestyle.Round)},
 				grid.Widget(w.commitsT),
 			),
