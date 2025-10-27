@@ -4,10 +4,10 @@ package model
 import "time"
 
 type Pomodoro struct {
-	ID             int64
-	Type           string
-	State          int
-	Duration       time.Duration
-	ActualDuration time.Duration
-	CreatedAt      time.Time
+	ID              int64
+	Type            string
+	State           int
+	Starttime       time.Time
+	PlannedDuration time.Duration
+	ActualDuration  time.Duration
 }

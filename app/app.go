@@ -43,7 +43,7 @@ func NewApp(sessionService *session.SessionService) (*App, error) {
 			w.update(title, "", "", "", []string{durationString, nextSessionType}, redrawCh)
 		}
 	}
-	b, err := newButtonSet(ctx, w, redrawCh)
+	b, err := newButtonSet(ctx, w, redrawCh, sessionService, errCh)
 	if err != nil {
 		return nil, err
 	}
