@@ -2,7 +2,7 @@
 package session
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"time"
 
@@ -10,8 +10,6 @@ import (
 )
 
 type sessionState int
-
-var ErrInvalidInput = errors.New("invalid input")
 
 const (
 	NotStarted sessionState = iota
@@ -35,9 +33,9 @@ type SessionService struct {
 }
 
 type SessionRepository interface {
-	Last() (model.Pomodoro, error)
-	Add() error
-	Update() error
+	Last() (*model.Pomodoro, error)
+	Add(p *model.Pomodoro) error
+	Update(p *model.Pomodoro) error
 }
 
 func NewSession(repo SessionRepository, pomodoroDuration, shortBreakDuration, longBreakDuration time.Duration) *SessionService {
@@ -50,15 +48,58 @@ func NewSession(repo SessionRepository, pomodoroDuration, shortBreakDuration, lo
 	}
 }
 
-func (s *SessionService) Start() error {
-	return nil
+func (s *SessionService) Start(ctx context.Context, update CallbackFunc) error {
+	last, err := s.repo.Last()
+	if err != nil {
+		return err
+	}
+	if last.State == int(Running) {
+		return nil
+	}
+
+	var dur time.Duration
+	switch s.sessionType {
+	case PomodoroSession:
+		dur = s.pomodoroDuration
+	case ShortBreakSession:
+		dur = s.shortBreakDuration
+	case LongBreakSession:
+		dur = s.longBreakDuration
+	}
+
+	if last.ID == 0 || last.State == int(Finished) {
+		session := &model.Pomodoro{
+			Type:            s.sessionType,
+			State:           int(Running),
+			Starttime:       time.Now(),
+			PlannedDuration: dur,
+		}
+		last.Starttime = time.Now()
+		s.repo.Add(session)
+		return s.tick(ctx, update)
+	}
+
+	if last.State == int(NotStarted) {
+		last.Starttime = time.Now()
+	}
+
+	last.State = int(Running)
+	if err := s.repo.Update(last); err != nil {
+		return err
+	}
+
+	return s.tick(ctx, update)
 }
 
 func (s *SessionService) Pause() error {
-	return nil
-}
-
-func (s *SessionService) Finish() error {
+	p, err := s.repo.Last()
+	if err != nil {
+		return err
+	}
+	p.State = int(Paused)
+	if err := s.repo.Update(p); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -97,4 +138,51 @@ func durationToDisplayString(d time.Duration) string {
 	}
 
 	return fmt.Sprintf("%s:%s", minutesString, secondsString)
+}
+
+type CallbackFunc func(sessionState string, timerString string)
+
+func (s *SessionService) tick(ctx context.Context, update CallbackFunc) error {
+	t := time.NewTicker(1 * time.Second)
+	defer t.Stop()
+
+	p, err := s.repo.Last()
+	if err != nil {
+		return err
+	}
+	expire := time.After(p.PlannedDuration - p.ActualDuration)
+	for {
+		select {
+		case <-t.C:
+			p, err := s.repo.Last()
+			if err != nil {
+				return err
+			}
+			if p.State == int(Paused) {
+				return nil
+			}
+			if p.State == int(Running) {
+				p.ActualDuration += time.Second
+			}
+			currentTimer := p.PlannedDuration - p.ActualDuration
+			update(s.sessionType, durationToDisplayString(currentTimer))
+			if err := s.repo.Update(p); err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			p, err := s.repo.Last()
+			if err != nil {
+				return err
+			}
+			p.State = int(Finished)
+			return s.repo.Update(p)
+		case <-expire:
+			p, err := s.repo.Last()
+			if err != nil {
+				return err
+			}
+			p.State = int(Finished)
+			return s.repo.Update(p)
+		}
+	}
 }

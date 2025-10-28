@@ -5,6 +5,7 @@ import (
 
 	"github.com/mum4k/termdash/cell"
 	"github.com/mum4k/termdash/widgets/button"
+	"github.com/rinarudhei/pomcli/session"
 )
 
 type buttonSet struct {
@@ -14,11 +15,11 @@ type buttonSet struct {
 	decrement   *button.Button
 }
 
-func newButtonSet(ctx context.Context, w *widgets, redrawCh chan<- bool) (*buttonSet, error) {
+func newButtonSet(ctx context.Context, w *widgets, redrawCh chan<- bool, s *session.SessionService, errCh chan<- error) (*buttonSet, error) {
 	var err error
 
 	bs := &buttonSet{}
-	bs.startButton, err = initStartButton(ctx, redrawCh)
+	bs.startButton, err = initStartButton(ctx, redrawCh, w, s, errCh)
 	if err != nil {
 		return nil, err
 	}
@@ -41,10 +42,13 @@ func newButtonSet(ctx context.Context, w *widgets, redrawCh chan<- bool) (*butto
 	return bs, nil
 }
 
-func initStartButton(ctx context.Context, redrawCh chan<- bool) (*button.Button, error) {
+func initStartButton(ctx context.Context, redrawCh chan<- bool, w *widgets, s *session.SessionService, errCh chan<- error) (*button.Button, error) {
 	return button.New("[s]tart", func() error {
 		go func() {
-			redrawCh <- true
+			update := func(sessionState string, timerString string) {
+				w.update("", "", "", "", []string{timerString, sessionState}, redrawCh)
+			}
+			errCh <- s.Start(ctx, update)
 		}()
 		return nil
 	},
