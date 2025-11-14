@@ -11,3 +11,9 @@ type Pomodoro struct {
 	PlannedDuration time.Duration
 	ActualDuration  time.Duration
 }
+
+type SwitchStateResponse struct {
+	DurationString  string
+	NextSessionType string
+	Title           string
+}

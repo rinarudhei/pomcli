@@ -39,8 +39,10 @@ func NewApp(sessionService *session.SessionService) (*App, error) {
 			cancel()
 		}
 		if k.Key == keyboard.KeyTab {
-			durationString, nextSessionType, title := sessionService.SwitchState()
-			w.update(title, "", "", "", []string{durationString, nextSessionType}, redrawCh)
+			resp, err := sessionService.SwitchState()
+			if err == nil {
+				w.update(resp.Title, "", "", "", []string{resp.DurationString, resp.NextSessionType}, redrawCh)
+			}
 		}
 	}
 	b, err := newButtonSet(ctx, w, redrawCh, sessionService, errCh)
