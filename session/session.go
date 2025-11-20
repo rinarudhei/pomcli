@@ -131,8 +131,8 @@ func (s *SessionService) SwitchState() (model.SwitchStateResponse, error) {
 		return model.SwitchStateResponse{}, err
 	}
 
-	if last.State == int(Running) {
-		return model.SwitchStateResponse{}, utils.ErrSwitchInRunningState
+	if last.State == int(Running) || last.State == int(Paused) {
+		return model.SwitchStateResponse{}, utils.ErrSwitchInActiveState
 	}
 
 	switch s.SessionType {

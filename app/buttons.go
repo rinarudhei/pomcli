@@ -15,16 +15,16 @@ type buttonSet struct {
 	decrement   *button.Button
 }
 
-func newButtonSet(ctx context.Context, w *widgets, redrawCh chan<- bool, s *session.SessionService, errCh chan<- error) (*buttonSet, error) {
+func newButtonSet(ctx context.Context, w *widgets, redrawCh chan<- bool, sessionService *session.SessionService, errCh chan<- error) (*buttonSet, error) {
 	var err error
 
 	bs := &buttonSet{}
-	bs.startButton, err = initStartButton(ctx, redrawCh, w, s, errCh)
+	bs.startButton, err = initStartButton(ctx, redrawCh, w, sessionService, errCh)
 	if err != nil {
 		return nil, err
 	}
 
-	bs.pauseButton, err = initPauseButton(ctx, redrawCh)
+	bs.pauseButton, err = initPauseButton(sessionService, errCh)
 	if err != nil {
 		return nil, err
 	}
@@ -60,10 +60,10 @@ func initStartButton(ctx context.Context, redrawCh chan<- bool, w *widgets, s *s
 	)
 }
 
-func initPauseButton(ctx context.Context, redrawCh chan<- bool) (*button.Button, error) {
+func initPauseButton(s *session.SessionService, errCh chan<- error) (*button.Button, error) {
 	return button.New("[p]ause", func() error {
 		go func() {
-			redrawCh <- true
+			errCh <- s.Pause()
 		}()
 		return nil
 	},
