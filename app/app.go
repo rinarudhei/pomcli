@@ -44,6 +44,20 @@ func NewApp(sessionService *session.SessionService) (*App, error) {
 				w.update(resp.Title, "", "", "", []string{resp.DurationString, resp.NextSessionType}, redrawCh)
 			}
 		}
+
+		if k.Key == '+' {
+			update := func(sessionState string, timerString string) {
+				w.update("", "", "", "", []string{timerString, sessionState}, redrawCh)
+			}
+			errCh <- sessionService.Increment(update)
+		}
+
+		if k.Key == '-' {
+			update := func(sessionState string, timerString string) {
+				w.update("", "", "", "", []string{timerString, sessionState}, redrawCh)
+			}
+			errCh <- sessionService.Decrement(update)
+		}
 	}
 	b, err := newButtonSet(ctx, w, redrawCh, sessionService, errCh)
 	if err != nil {

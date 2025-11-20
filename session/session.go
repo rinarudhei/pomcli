@@ -64,6 +64,66 @@ func NewSession(repo SessionRepository, pomodoroDuration, shortBreakDuration, lo
 	}
 }
 
+func (s *SessionService) Decrement(update CallbackFunc) error {
+	last, err := s.Repo.Last()
+	if err != nil {
+		return err
+	}
+
+	if last.State == int(Running) || last.State == int(Paused) {
+		return nil
+	}
+	var currentPlannedDuration time.Duration
+	switch s.SessionType {
+	case PomodoroSession:
+		if s.PomodoroDuration <= 5*time.Minute {
+			return nil
+		}
+		s.PomodoroDuration -= 5 * time.Minute
+		currentPlannedDuration = s.PomodoroDuration
+	case ShortBreakSession:
+		if s.ShortBreakDuration <= 5*time.Minute {
+			return nil
+		}
+		s.ShortBreakDuration -= 5 * time.Minute
+		currentPlannedDuration = s.ShortBreakDuration
+	case LongBreakSession:
+		if s.LongBreakDuration <= 5*time.Minute {
+			return nil
+		}
+		s.LongBreakDuration -= 5 * time.Minute
+		currentPlannedDuration = s.LongBreakDuration
+	}
+
+	update(s.SessionType, durationToDisplayString(currentPlannedDuration))
+	return nil
+}
+
+func (s *SessionService) Increment(update CallbackFunc) error {
+	last, err := s.Repo.Last()
+	if err != nil {
+		return err
+	}
+	if last.State == int(Running) || last.State == int(Paused) {
+		return nil
+	}
+	var currentPlannedDuration time.Duration
+	switch s.SessionType {
+	case PomodoroSession:
+		s.PomodoroDuration += 5 * time.Minute
+		currentPlannedDuration = s.PomodoroDuration
+	case ShortBreakSession:
+		s.ShortBreakDuration += 5 * time.Minute
+		currentPlannedDuration = s.ShortBreakDuration
+	case LongBreakSession:
+		s.LongBreakDuration += 5 * time.Minute
+		currentPlannedDuration = s.LongBreakDuration
+	}
+
+	update(s.SessionType, durationToDisplayString(currentPlannedDuration))
+	return nil
+}
+
 func (s *SessionService) Start(ctx context.Context, update CallbackFunc) error {
 	last, err := s.Repo.Last()
 	if err != nil {

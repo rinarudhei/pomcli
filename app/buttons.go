@@ -29,16 +29,6 @@ func newButtonSet(ctx context.Context, w *widgets, redrawCh chan<- bool, session
 		return nil, err
 	}
 
-	bs.increment, err = initIncrementButton(ctx, redrawCh)
-	if err != nil {
-		return nil, err
-	}
-
-	bs.decrement, err = initDecrementButton(ctx, redrawCh)
-	if err != nil {
-		return nil, err
-	}
-
 	return bs, nil
 }
 
@@ -71,33 +61,5 @@ func initPauseButton(s *session.SessionService, errCh chan<- error) (*button.But
 		button.FillColor(cell.ColorYellow),
 		button.ShadowColor(cell.ColorGray),
 		button.GlobalKey('p'),
-	)
-}
-
-func initIncrementButton(ctx context.Context, redrawCh chan<- bool) (*button.Button, error) {
-	return button.New("[+]", func() error {
-		go func() {
-			redrawCh <- true
-		}()
-		return nil
-	},
-		button.Height(1),
-		button.WidthFor("[+]"),
-		button.FillColor(cell.ColorYellow),
-		button.GlobalKey('+'),
-	)
-}
-
-func initDecrementButton(ctx context.Context, redrawCh chan<- bool) (*button.Button, error) {
-	return button.New("[-]", func() error {
-		go func() {
-			redrawCh <- true
-		}()
-		return nil
-	},
-		button.Height(1),
-		button.WidthFor("[+]"),
-		button.FillColor(cell.ColorYellow),
-		button.GlobalKey('-'),
 	)
 }
