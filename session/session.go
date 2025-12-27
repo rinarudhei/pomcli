@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rinarudhei/pomcli/model"
+	"github.com/rinarudhei/pomcli/notify"
 	"github.com/rinarudhei/pomcli/utils"
 )
 
@@ -264,6 +265,10 @@ func (s *SessionService) tick(ctx context.Context, update CallbackFunc) error {
 				return err
 			}
 			p.State = int(Finished)
+			n := notify.New(s.SessionType, "Done", notify.SeverityNormal)
+			if err := n.Send(); err != nil {
+				fmt.Println(err)
+			}
 			return s.Repo.Update(p)
 		case <-expire:
 			p, err := s.Repo.Last()
@@ -271,6 +276,10 @@ func (s *SessionService) tick(ctx context.Context, update CallbackFunc) error {
 				return err
 			}
 			p.State = int(Finished)
+			n := notify.New(s.SessionType, "Done", notify.SeverityNormal)
+			if err := n.Send(); err != nil {
+				fmt.Println(err)
+			}
 			return s.Repo.Update(p)
 		}
 	}

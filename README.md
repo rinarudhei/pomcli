@@ -1,2 +1,3 @@
 # pomcli
-Pomodoro counter CLI application. Focus booster.
+
+Opinionated Pomodoro counter CLI application. Focus booster.
