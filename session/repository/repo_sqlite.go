@@ -71,11 +71,11 @@ func (r *DbRepo) Add(i model.Pomodoro) error {
 	return nil
 }
 
-func (r *DbRepo) GetTodayPomodoro() ([]model.Pomodoro, error) {
+func (r *DbRepo) GetHistory() ([]model.Pomodoro, error) {
 	r.RLock()
 	defer r.RUnlock()
 
-	rows, err := r.db.Query("SELECT * FROM pomodoros where start_time >= ? AND type = ? ORDER BY start_time DESC", time.Now().Format("2006-01-02"), session.PomodoroSession)
+	rows, err := r.db.Query("SELECT * FROM pomodoros where start_time >= ? AND type = ? ORDER BY start_time DESC", time.Now().Add(-7*24*time.Hour).Format("2006-01-02"), session.PomodoroSession)
 	if err != nil {
 		return []model.Pomodoro{}, err
 	}

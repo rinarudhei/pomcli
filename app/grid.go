@@ -32,7 +32,7 @@ func newGrid(bs *buttonSet, w *widgets, t terminalapi.Terminal) (*container.Cont
 			grid.ColWidthPercWithOpts(50, []container.Option{container.BorderTitle("Git commits"), container.Border(linestyle.Round)},
 				grid.Widget(w.commitsT),
 			),
-			grid.ColWidthPercWithOpts(25, []container.Option{container.BorderTitle("History (today)"), container.Border(linestyle.Round)},
+			grid.ColWidthPercWithOpts(25, []container.Option{container.BorderTitle("History"), container.Border(linestyle.Round)},
 				grid.Widget(w.historyT),
 			),
 			grid.ColWidthPercWithOpts(25, []container.Option{container.BorderTitle("Summary"), container.Border(linestyle.Round)},

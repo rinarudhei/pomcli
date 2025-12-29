@@ -179,14 +179,7 @@ func newSummaryT(ctx context.Context, updateText <-chan string, errCh chan<- err
 		return nil, err
 	}
 
-	t.Write(`sessions              : 0\n 
-		focus time            : 0\n 
-		break time            : 0\n 
-		commits               : 0\n 
-		code insertion (lines): 0\n 
-		distractions          : -
-		`)
-
+	t.Write("- MAMEN")
 	go func() {
 		for {
 			select {

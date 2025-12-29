@@ -59,7 +59,7 @@ type InMemoryRepository interface {
 
 type SqliteRepository interface {
 	Add(p model.Pomodoro) error
-	GetTodayPomodoro() ([]model.Pomodoro, error)
+	GetHistory() ([]model.Pomodoro, error)
 }
 
 func NewSession(repo InMemoryRepository, sqliteRepo SqliteRepository, pomodoroDuration, shortBreakDuration, longBreakDuration time.Duration) *SessionService {
@@ -74,7 +74,7 @@ func NewSession(repo InMemoryRepository, sqliteRepo SqliteRepository, pomodoroDu
 }
 
 func (s *SessionService) GetInfos() (string, error) {
-	pomodoros, err := s.SqliteRepo.GetTodayPomodoro()
+	pomodoros, err := s.SqliteRepo.GetHistory()
 	if err == sql.ErrNoRows {
 		return "", nil
 	}
