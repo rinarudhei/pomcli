@@ -29,7 +29,9 @@ func TestNewSession(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := repository.NewRepository()
-			s := session.NewSession(repo, tc.pomDuration, tc.sbreakDuration, tc.lbreakDuration)
+			sqliteRepo, cleanup := generateSqliteSession(t)
+			defer cleanup()
+			s := session.NewSession(repo, sqliteRepo, tc.pomDuration, tc.sbreakDuration, tc.lbreakDuration)
 
 			if s.SessionType != session.PomodoroSession {
 				t.Errorf("expect session type %s, got %s", session.PomodoroSession, s.SessionType)
@@ -45,6 +47,18 @@ func TestNewSession(t *testing.T) {
 				t.Errorf("expect long break duration %v, got %v", tc.lbreakDuration, s.LongBreakDuration)
 			}
 		})
+	}
+}
+
+func generateSqliteSession(t *testing.T) (*repository.DbRepo, func()) {
+	t.Helper()
+
+	sqliteRepo, err := repository.NewSQLiteRepo(":memory:")
+	if err != nil {
+		t.Fatal("error generating sqlite repo")
+	}
+	return sqliteRepo, func() {
+		sqliteRepo.Close()
 	}
 }
 
@@ -70,7 +84,7 @@ func generateRepoWithFinishedSession(t *testing.T) *repository.SessionRepository
 func TestStartSession(t *testing.T) {
 	testCases := []struct {
 		name       string
-		mockedRepo session.SessionRepository
+		mockedRepo session.InMemoryRepository
 		expSession model.Pomodoro
 		expErr     error
 	}{
@@ -100,8 +114,10 @@ func TestStartSession(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			s := session.NewSession(tc.mockedRepo, tc.expSession.PlannedDuration, tc.expSession.PlannedDuration, tc.expSession.PlannedDuration)
-			update := func(sessionState string, timerString string) {}
+			sqliteRepo, cleanup := generateSqliteSession(t)
+			defer cleanup()
+			s := session.NewSession(tc.mockedRepo, sqliteRepo, tc.expSession.PlannedDuration, tc.expSession.PlannedDuration, tc.expSession.PlannedDuration)
+			update := func(sessionState, timerString, history string) {}
 
 			err := s.Start(context.Background(), update)
 			if err != nil {

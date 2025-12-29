@@ -3,6 +3,7 @@ package session
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -42,27 +43,51 @@ const (
 )
 
 type SessionService struct {
-	Repo               SessionRepository
+	Repo               InMemoryRepository
+	SqliteRepo         SqliteRepository
 	SessionType        string
 	PomodoroDuration   time.Duration
 	ShortBreakDuration time.Duration
 	LongBreakDuration  time.Duration
 }
 
-type SessionRepository interface {
+type InMemoryRepository interface {
 	Last() (model.Pomodoro, error)
 	Add(p model.Pomodoro) error
 	Update(p model.Pomodoro) error
 }
 
-func NewSession(repo SessionRepository, pomodoroDuration, shortBreakDuration, longBreakDuration time.Duration) *SessionService {
+type SqliteRepository interface {
+	Add(p model.Pomodoro) error
+	GetTodayPomodoro() ([]model.Pomodoro, error)
+}
+
+func NewSession(repo InMemoryRepository, sqliteRepo SqliteRepository, pomodoroDuration, shortBreakDuration, longBreakDuration time.Duration) *SessionService {
 	return &SessionService{
 		Repo:               repo,
+		SqliteRepo:         sqliteRepo,
 		SessionType:        PomodoroSession,
 		PomodoroDuration:   pomodoroDuration,
 		ShortBreakDuration: shortBreakDuration,
 		LongBreakDuration:  longBreakDuration,
 	}
+}
+
+func (s *SessionService) GetInfos() (string, error) {
+	pomodoros, err := s.SqliteRepo.GetTodayPomodoro()
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	var history string
+	for _, p := range pomodoros {
+		history += fmt.Sprintf("     🍅 %.0f minutes (%v)\n", (p.PlannedDuration - p.ActualDuration).Minutes(), p.Starttime.Format(time.DateTime))
+	}
+	return history, nil
 }
 
 func (s *SessionService) Decrement(update CallbackFunc) error {
@@ -96,7 +121,7 @@ func (s *SessionService) Decrement(update CallbackFunc) error {
 		currentPlannedDuration = s.LongBreakDuration
 	}
 
-	update(s.SessionType, durationToDisplayString(currentPlannedDuration))
+	update(s.SessionType, durationToDisplayString(currentPlannedDuration), "")
 	return nil
 }
 
@@ -121,7 +146,7 @@ func (s *SessionService) Increment(update CallbackFunc) error {
 		currentPlannedDuration = s.LongBreakDuration
 	}
 
-	update(s.SessionType, durationToDisplayString(currentPlannedDuration))
+	update(s.SessionType, durationToDisplayString(currentPlannedDuration), "")
 	return nil
 }
 
@@ -229,7 +254,7 @@ func durationToDisplayString(d time.Duration) string {
 	return fmt.Sprintf("%s:%s", minutesString, secondsString)
 }
 
-type CallbackFunc func(sessionState string, timerString string)
+type CallbackFunc func(sessionState, timerString, history string)
 
 func (s *SessionService) tick(ctx context.Context, update CallbackFunc) error {
 	t := time.NewTicker(1 * time.Second)
@@ -255,7 +280,7 @@ func (s *SessionService) tick(ctx context.Context, update CallbackFunc) error {
 				p.ActualDuration += time.Second
 			}
 			currentTimer := p.PlannedDuration - p.ActualDuration
-			update(s.SessionType, durationToDisplayString(currentTimer))
+			update(s.SessionType, durationToDisplayString(currentTimer), "")
 			if err := s.Repo.Update(p); err != nil {
 				return err
 			}
@@ -265,9 +290,9 @@ func (s *SessionService) tick(ctx context.Context, update CallbackFunc) error {
 				return err
 			}
 			p.State = int(Finished)
-			n := notify.New(s.SessionType, "Done", notify.SeverityNormal)
-			if err := n.Send(); err != nil {
-				fmt.Println(err)
+
+			if err := s.SqliteRepo.Add(p); err != nil {
+				return err
 			}
 			return s.Repo.Update(p)
 		case <-expire:
@@ -280,6 +305,16 @@ func (s *SessionService) tick(ctx context.Context, update CallbackFunc) error {
 			if err := n.Send(); err != nil {
 				fmt.Println(err)
 			}
+			if err := s.SqliteRepo.Add(p); err != nil {
+				return err
+			}
+
+			infos, err := s.GetInfos()
+			if err != nil {
+				return err
+			}
+			update(s.SessionType, "", infos)
+
 			return s.Repo.Update(p)
 		}
 	}

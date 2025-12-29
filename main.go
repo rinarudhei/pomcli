@@ -11,7 +11,11 @@ import (
 
 func main() {
 	repo := repository.NewRepository()
-	s := session.NewSession(repo, 50*time.Minute, 10*time.Minute, 60*time.Second)
+	sqliteRepo, err := repository.NewSQLiteRepo("pomcli.db")
+	if err != nil {
+		os.Exit(1)
+	}
+	s := session.NewSession(repo, sqliteRepo, 5*time.Second, 10*time.Minute, 60*time.Second)
 	a, err := app.NewApp(s)
 	if err != nil {
 		os.Exit(1)

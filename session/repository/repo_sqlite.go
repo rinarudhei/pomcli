@@ -1,53 +1,94 @@
-// Package repository contains methods to interact with database
 package repository
 
 import (
+	"database/sql"
 	"sync"
+	"time"
 
+	_ "github.com/glebarez/go-sqlite"
 	"github.com/rinarudhei/pomcli/model"
+	"github.com/rinarudhei/pomcli/session"
 )
 
-type SessionRepository struct {
+const (
+	createTableInterval string = `CREATE TABLE IF NOT EXISTS "pomodoros" (
+		"id" INTEGER,
+		"start_time" DATETIME NOT NULL,
+		"planned_duration" INTEGER DEFAULT 0,
+		"actual_duration" INTEGER DEFAULT 0,
+		"type" TEXT NOT NULL,
+		"state" INTEGER DEFAULT 1,
+		PRIMARY KEY("id")
+	);`
+)
+
+type DbRepo struct {
+	db *sql.DB
 	sync.RWMutex
-	sessions []model.Pomodoro
 }
 
-func NewRepository() *SessionRepository {
-	return &SessionRepository{}
-}
-
-func (s *SessionRepository) Last() (model.Pomodoro, error) {
-	s.RLock()
-	defer s.RUnlock()
-
-	if len(s.sessions) == 0 {
-		return model.Pomodoro{}, nil
+func NewSQLiteRepo(dbfile string) (*DbRepo, error) {
+	db, err := sql.Open("sqlite", dbfile)
+	if err != nil {
+		return nil, err
 	}
 
-	last := s.sessions[len(s.sessions)-1]
-	return last, nil
+	db.SetConnMaxLifetime(30 * time.Minute)
+	db.SetMaxOpenConns(1)
+
+	if err := db.Ping(); err != nil {
+		return nil, err
+	}
+
+	if _, err := db.Exec(createTableInterval); err != nil {
+		return nil, err
+	}
+
+	return &DbRepo{
+		db: db,
+	}, nil
 }
 
-func (s *SessionRepository) Add(p model.Pomodoro) error {
-	s.Lock()
-	defer s.Unlock()
+func (r *DbRepo) Close() error {
+	return r.db.Close()
+}
 
-	p.ID = int64(len(s.sessions) + 1)
-	s.sessions = append(s.sessions, p)
+func (r *DbRepo) Add(i model.Pomodoro) error {
+	r.Lock()
+	defer r.Unlock()
+
+	insStmt, err := r.db.Prepare("INSERT INTO pomodoros VALUES(NULL, ?,?,?,?,?)")
+	if err != nil {
+		return err
+	}
+	defer insStmt.Close()
+
+	_, err = insStmt.Exec(i.Starttime, i.PlannedDuration, i.ActualDuration, i.Type, i.State)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
-func (s *SessionRepository) Update(p model.Pomodoro) error {
-	s.Lock()
-	defer s.Unlock()
+func (r *DbRepo) GetTodayPomodoro() ([]model.Pomodoro, error) {
+	r.RLock()
+	defer r.RUnlock()
 
-	for i, session := range s.sessions {
-		if session.ID == p.ID {
-			s.sessions[i] = p
-			break
+	rows, err := r.db.Query("SELECT * FROM pomodoros where start_time >= ? AND type = ? ORDER BY start_time DESC", time.Now().Format("2006-01-02"), session.PomodoroSession)
+	if err != nil {
+		return []model.Pomodoro{}, err
+	}
+
+	var pomodoros []model.Pomodoro
+	for rows.Next() {
+		i := model.Pomodoro{}
+		if err := rows.Scan(&i.ID, &i.Starttime, &i.PlannedDuration, &i.ActualDuration, &i.Type, &i.State); err != nil {
+			return []model.Pomodoro{}, err
 		}
+
+		pomodoros = append(pomodoros, i)
 	}
 
-	return nil
+	return pomodoros, nil
 }

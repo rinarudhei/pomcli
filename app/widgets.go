@@ -31,7 +31,7 @@ func (w *widgets) update(timerTitle, historyT, summaryT, commitsT string, segDis
 		w.updateTimerTitle <- timerTitle
 	}
 
-	if len(segDis) > 0 {
+	if len(segDis) > 0 && segDis[0] != "" && segDis[1] != "" {
 		w.updateSegDis <- segDis
 	}
 
@@ -50,7 +50,7 @@ func (w *widgets) update(timerTitle, historyT, summaryT, commitsT string, segDis
 	redrawCh <- true
 }
 
-func newWidgets(ctx context.Context, errCh chan<- error) (*widgets, error) {
+func newWidgets(ctx context.Context, errCh chan<- error, history string) (*widgets, error) {
 	w := &widgets{}
 	w.updateSegDis = make(chan []string)
 	w.updateHistoryT = make(chan string)
@@ -74,7 +74,7 @@ func newWidgets(ctx context.Context, errCh chan<- error) (*widgets, error) {
 		return nil, err
 	}
 
-	w.historyT, err = newHistoryT(ctx, w.updateHistoryT, errCh)
+	w.historyT, err = newHistoryT(ctx, w.updateHistoryT, errCh, history)
 	if err != nil {
 		return nil, err
 	}
@@ -151,12 +151,12 @@ func newSegDis(ctx context.Context, updateText <-chan []string, errCh chan<- err
 	return sd, nil
 }
 
-func newHistoryT(ctx context.Context, updateText <-chan string, errCh chan<- error) (*text.Text, error) {
+func newHistoryT(ctx context.Context, updateText <-chan string, errCh chan<- error, initial string) (*text.Text, error) {
 	t, err := text.New()
 	if err != nil {
 		return nil, err
 	}
-	t.Write("-")
+	t.Write(initial)
 
 	go func() {
 		for {
