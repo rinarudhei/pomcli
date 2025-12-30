@@ -23,3 +23,10 @@ type Activity struct {
 	Message     string
 	CompletedAt time.Time
 }
+
+type Summary struct {
+	CurrentDate   time.Time
+	ActivityCount int
+	SessionCount  int
+	FocusDuration time.Duration
+}

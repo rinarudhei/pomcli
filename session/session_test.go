@@ -117,7 +117,7 @@ func TestStartSession(t *testing.T) {
 			sqliteRepo, cleanup := generateSqliteSession(t)
 			defer cleanup()
 			s := session.NewSession(tc.mockedRepo, sqliteRepo, tc.expSession.PlannedDuration, tc.expSession.PlannedDuration, tc.expSession.PlannedDuration)
-			update := func(sessionState, timerString, history, activities string) {}
+			update := func(sessionState, timerString, history, activities, summary string) {}
 
 			err := s.Start(context.Background(), update)
 			if err != nil {

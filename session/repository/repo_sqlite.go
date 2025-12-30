@@ -145,3 +145,22 @@ func (r *DbRepo) GetActivities() ([]model.Activity, error) {
 
 	return activities, nil
 }
+
+func (r *DbRepo) GetSummary() (model.Summary, error) {
+	r.RLock()
+	defer r.RUnlock()
+
+	var summary model.Summary
+	summary.CurrentDate = time.Now()
+	row := r.db.QueryRow("SELECT COUNT(*), COALESCE(SUM(actual_duration), 0) FROM pomodoros WHERE type = ? and start_time >= ?", session.PomodoroSession, time.Now().Format("2006-01-02"))
+
+	if err := row.Scan(&summary.SessionCount, &summary.FocusDuration); err != nil {
+		return summary, err
+	}
+	row = r.db.QueryRow("SELECT COUNT(*) FROM activities WHERE completed_at >= ?", time.Now().Format("2006-01-02"))
+	if err := row.Scan(&summary.ActivityCount); err != nil {
+		return summary, err
+	}
+
+	return summary, nil
+}

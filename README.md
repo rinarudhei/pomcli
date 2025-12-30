@@ -8,9 +8,8 @@ Usage:
 pomcli [flags]
 
 Flags:
--d, --db string Database file (default "/home/rin/.config/pomcli/pomcli.db")
 -h, --help help for pomcli
--l, --long-break duration Long break duration (default 1h0m0s)
+-l, --long-break duration Long break duration (default 59m0s)
 -p, --pomodoro duration Pomodoro duration (default 50m0s)
 -s, --short-break duration Short break duration (default 10m0s)
 -v, --version version for pomcli

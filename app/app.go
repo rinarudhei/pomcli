@@ -34,7 +34,12 @@ func NewApp(sessionService *session.SessionService) (*App, error) {
 		cancel()
 		return nil, err
 	}
-	w, err := newWidgets(ctx, errCh, histories, acts)
+	summary, err := sessionService.GetSummary()
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	w, err := newWidgets(ctx, errCh, histories, acts, summary)
 	if err != nil {
 		cancel()
 		return nil, err
@@ -52,14 +57,14 @@ func NewApp(sessionService *session.SessionService) (*App, error) {
 		}
 
 		if k.Key == '+' {
-			update := func(sessionState, timerString, history, activities string) {
+			update := func(sessionState, timerString, history, activities, summary string) {
 				w.update("", "", "", "", []string{timerString, sessionState}, redrawCh)
 			}
 			errCh <- sessionService.Increment(update)
 		}
 
 		if k.Key == '-' {
-			update := func(sessionState, timerString, history, activities string) {
+			update := func(sessionState, timerString, history, activities, summary string) {
 				w.update("", "", "", "", []string{timerString, sessionState}, redrawCh)
 			}
 			errCh <- sessionService.Decrement(update)

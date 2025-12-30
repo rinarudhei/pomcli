@@ -29,7 +29,7 @@ var rootCmd = &cobra.Command{
 	Version: "0.1",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		repo := repository.NewRepository()
-		sqliteRepo, err := repository.NewSQLiteRepo(viper.GetString("db"))
+		sqliteRepo, err := repository.NewSQLiteRepo(dbPath)
 		if err != nil {
 			return err
 		}
@@ -66,6 +66,8 @@ func Execute() {
 	}
 }
 
+var dbPath = ""
+
 func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
@@ -82,18 +84,16 @@ func init() {
 
 	// Correct path
 	configDir := filepath.Join(home, ".config", "pomcli")
-	dbPath := filepath.Join(configDir, "pomcli.db")
+	dbPath = filepath.Join(configDir, "pomcli.db")
 
 	// Create directory if it doesn't exist
 	if err := os.MkdirAll(configDir, 0o755); err != nil {
 		os.Exit(1)
 	}
-	rootCmd.Flags().StringP("db", "d", dbPath, "Database file")
 	rootCmd.Flags().DurationP("pomodoro", "p", 50*time.Minute, "Pomodoro duration")
 	rootCmd.Flags().DurationP("short-break", "s", 10*time.Minute, "Short break duration")
-	rootCmd.Flags().DurationP("long-break", "l", 60*time.Minute, "Long break duration")
+	rootCmd.Flags().DurationP("long-break", "l", 59*time.Minute, "Long break duration")
 
-	viper.BindPFlag("db", rootCmd.Flags().Lookup("db"))
 	viper.BindPFlag("pomodoro", rootCmd.Flags().Lookup("pomodoro"))
 	viper.BindPFlag("short-break", rootCmd.Flags().Lookup("short-break"))
 	viper.BindPFlag("long-break", rootCmd.Flags().Lookup("long-break"))

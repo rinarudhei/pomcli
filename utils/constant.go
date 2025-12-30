@@ -9,4 +9,7 @@ var (
 	ErrSwitchInActiveState = errors.New("cannot switch when timer is active")
 )
 
-const UpdateActivityIntervalSecond int = 5
+const (
+	UpdateActivityIntervalSecond int = 2
+	UpdateSummaryIntervalSecond  int = 10
+)

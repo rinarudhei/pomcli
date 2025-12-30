@@ -2,12 +2,14 @@ package app
 
 import (
 	"context"
+	"strings"
 
 	"github.com/mum4k/termdash/align"
 	"github.com/mum4k/termdash/cell"
 	"github.com/mum4k/termdash/widgets/segmentdisplay"
 	"github.com/mum4k/termdash/widgets/text"
 	"github.com/rinarudhei/pomcli/session"
+	"github.com/spf13/viper"
 )
 
 type Tab string
@@ -50,7 +52,7 @@ func (w *widgets) update(timerTitle, historyT, summaryT, commitsT string, segDis
 	redrawCh <- true
 }
 
-func newWidgets(ctx context.Context, errCh chan<- error, history, acts string) (*widgets, error) {
+func newWidgets(ctx context.Context, errCh chan<- error, history, acts, summary string) (*widgets, error) {
 	w := &widgets{}
 	w.updateSegDis = make(chan []string)
 	w.updateHistoryT = make(chan string)
@@ -79,7 +81,7 @@ func newWidgets(ctx context.Context, errCh chan<- error, history, acts string) (
 		return nil, err
 	}
 
-	w.summaryT, err = newSummaryT(ctx, w.updateSummaryT, errCh)
+	w.summaryT, err = newSummaryT(ctx, w.updateSummaryT, errCh, summary)
 	if err != nil {
 		return nil, err
 	}
@@ -119,9 +121,12 @@ func newSegDis(ctx context.Context, updateText <-chan []string, errCh chan<- err
 	if err != nil {
 		return nil, err
 	}
+	initDur := viper.GetDuration("pomodoro")
+	mReplaced := strings.Replace(initDur.String(), "m", ":", 1)
+	sReplaced := strings.Replace(mReplaced, "s", "0", 1)
 	sd.Write([]*segmentdisplay.TextChunk{
 		segmentdisplay.NewChunk(
-			"50:00",
+			sReplaced,
 			segmentdisplay.WriteCellOpts(cell.FgColor(cell.ColorRed)),
 		),
 	},
@@ -173,13 +178,13 @@ func newHistoryT(ctx context.Context, updateText <-chan string, errCh chan<- err
 	return t, nil
 }
 
-func newSummaryT(ctx context.Context, updateText <-chan string, errCh chan<- error) (*text.Text, error) {
+func newSummaryT(ctx context.Context, updateText <-chan string, errCh chan<- error, summary string) (*text.Text, error) {
 	t, err := text.New()
 	if err != nil {
 		return nil, err
 	}
 
-	t.Write("- MAMEN")
+	t.Write(summary)
 	go func() {
 		for {
 			select {

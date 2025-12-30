@@ -62,6 +62,7 @@ type SqliteRepository interface {
 	AddActivity(model.Activity) error
 	GetHistory() ([]model.Pomodoro, error)
 	GetActivities() ([]model.Activity, error)
+	GetSummary() (model.Summary, error)
 }
 
 func NewSession(repo InMemoryRepository, sqliteRepo SqliteRepository, pomodoroDuration, shortBreakDuration, longBreakDuration time.Duration) *SessionService {
@@ -101,13 +102,28 @@ func (s *SessionService) GetInfos() (string, string, error) {
 	var history string
 	var activitiesString string
 	for _, p := range pomodoros {
-		history += fmt.Sprintf("     🍅 %.0f minutes (%v)\n", (p.PlannedDuration - p.ActualDuration).Minutes(), p.Starttime.Format(time.DateTime))
+		history += fmt.Sprintf("     🍅 %.0f minutes (%v)\n", p.ActualDuration.Minutes(), p.Starttime.Format(time.DateTime))
 	}
 	for _, a := range activities {
-		activitiesString += fmt.Sprintf("   🟢 %s (%v)\n", a.Message, a.CompletedAt.Format(time.DateTime))
+		activitiesString += fmt.Sprintf("   ◇ %s (%v)\n", a.Message, a.CompletedAt.Format(time.DateTime))
 	}
 
 	return history, activitiesString, nil
+}
+
+func (s *SessionService) GetSummary() (string, error) {
+	summary, err := s.SqliteRepo.GetSummary()
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	summaryString := fmt.Sprintf("   ▾ Date: %v\n   ▾ Pomodoros: %d\n   ▾ Focus: %.0f minutes\n   ▾ Activities: %d\n",
+		summary.CurrentDate.Format(time.DateOnly), summary.SessionCount, summary.FocusDuration.Minutes(), summary.ActivityCount)
+	return summaryString, nil
 }
 
 func (s *SessionService) Decrement(update CallbackFunc) error {
@@ -141,7 +157,7 @@ func (s *SessionService) Decrement(update CallbackFunc) error {
 		currentPlannedDuration = s.LongBreakDuration
 	}
 
-	update(s.SessionType, durationToDisplayString(currentPlannedDuration), "", "")
+	update(s.SessionType, durationToDisplayString(currentPlannedDuration), "", "", "")
 	return nil
 }
 
@@ -166,7 +182,7 @@ func (s *SessionService) Increment(update CallbackFunc) error {
 		currentPlannedDuration = s.LongBreakDuration
 	}
 
-	update(s.SessionType, durationToDisplayString(currentPlannedDuration), "", "")
+	update(s.SessionType, durationToDisplayString(currentPlannedDuration), "", "", "")
 	return nil
 }
 
@@ -274,7 +290,7 @@ func durationToDisplayString(d time.Duration) string {
 	return fmt.Sprintf("%s:%s", minutesString, secondsString)
 }
 
-type CallbackFunc func(sessionState, timerString, history, activities string)
+type CallbackFunc func(sessionState, timerString, history, activities, summary string)
 
 func (s *SessionService) tick(ctx context.Context, update CallbackFunc) error {
 	t := time.NewTicker(1 * time.Second)
@@ -301,15 +317,21 @@ func (s *SessionService) tick(ctx context.Context, update CallbackFunc) error {
 			}
 
 			var activities string
+			var summary string
 			if ti.Second()%utils.UpdateActivityIntervalSecond == 0 {
 				_, activities, err = s.GetInfos()
 				if err != nil {
 					return err
 				}
-
+			}
+			if ti.Second()%utils.UpdateSummaryIntervalSecond == 0 {
+				summary, err = s.GetSummary()
+				if err != nil {
+					return err
+				}
 			}
 			currentTimer := p.PlannedDuration - p.ActualDuration
-			update(s.SessionType, durationToDisplayString(currentTimer), "", activities)
+			update(s.SessionType, durationToDisplayString(currentTimer), "", activities, summary)
 			if err := s.Repo.Update(p); err != nil {
 				return err
 			}
@@ -339,7 +361,12 @@ func (s *SessionService) tick(ctx context.Context, update CallbackFunc) error {
 			if err != nil {
 				return err
 			}
-			update(s.SessionType, "", history, activities)
+
+			summary, err := s.GetSummary()
+			if err != nil {
+				return err
+			}
+			update(s.SessionType, "", history, activities, summary)
 
 			return s.Repo.Update(p)
 		}
