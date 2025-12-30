@@ -23,5 +23,5 @@ or manually using this command:
 ```
 pomcli activity-hook ...[args]
 
-//example: pomcli activity-hook {project-name}:{branch-name} {description}
+//example: pomcli activity-hook {project-name}\{branch-name} {description}
 ```
