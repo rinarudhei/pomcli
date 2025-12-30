@@ -17,3 +17,9 @@ type SwitchStateResponse struct {
 	NextSessionType string
 	Title           string
 }
+
+type Activity struct {
+	ID          int64
+	Message     string
+	CompletedAt time.Time
+}

@@ -35,8 +35,8 @@ func newButtonSet(ctx context.Context, w *widgets, redrawCh chan<- bool, session
 func initStartButton(ctx context.Context, redrawCh chan<- bool, w *widgets, s *session.SessionService, errCh chan<- error) (*button.Button, error) {
 	return button.New("[s]tart", func() error {
 		go func() {
-			update := func(sessionState string, timerString, history string) {
-				w.update("", history, "", "", []string{timerString, sessionState}, redrawCh)
+			update := func(sessionState string, timerString, history, activities string) {
+				w.update("", history, "", activities, []string{timerString, sessionState}, redrawCh)
 			}
 			errCh <- s.Start(ctx, update)
 		}()

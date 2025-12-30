@@ -8,3 +8,5 @@ var (
 	ErrSessionNotFound     = errors.New("no session found")
 	ErrSwitchInActiveState = errors.New("cannot switch when timer is active")
 )
+
+const UpdateActivityIntervalSecond int = 5

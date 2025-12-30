@@ -50,7 +50,7 @@ func (w *widgets) update(timerTitle, historyT, summaryT, commitsT string, segDis
 	redrawCh <- true
 }
 
-func newWidgets(ctx context.Context, errCh chan<- error, history string) (*widgets, error) {
+func newWidgets(ctx context.Context, errCh chan<- error, history, acts string) (*widgets, error) {
 	w := &widgets{}
 	w.updateSegDis = make(chan []string)
 	w.updateHistoryT = make(chan string)
@@ -84,7 +84,7 @@ func newWidgets(ctx context.Context, errCh chan<- error, history string) (*widge
 		return nil, err
 	}
 
-	w.commitsT, err = newCommitsT(ctx, w.updateCommitsT, errCh)
+	w.commitsT, err = newCommitsT(ctx, w.updateCommitsT, errCh, acts)
 	if err != nil {
 		return nil, err
 	}
@@ -195,13 +195,13 @@ func newSummaryT(ctx context.Context, updateText <-chan string, errCh chan<- err
 	return t, nil
 }
 
-func newCommitsT(ctx context.Context, updateText <-chan string, errCh chan<- error) (*text.Text, error) {
+func newCommitsT(ctx context.Context, updateText <-chan string, errCh chan<- error, acts string) (*text.Text, error) {
 	t, err := text.New()
 	if err != nil {
 		return nil, err
 	}
 	t.Write(
-		`-`,
+		acts,
 	)
 
 	go func() {

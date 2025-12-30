@@ -58,8 +58,10 @@ type InMemoryRepository interface {
 }
 
 type SqliteRepository interface {
-	Add(p model.Pomodoro) error
+	Add(model.Pomodoro) error
+	AddActivity(model.Activity) error
 	GetHistory() ([]model.Pomodoro, error)
+	GetActivities() ([]model.Activity, error)
 }
 
 func NewSession(repo InMemoryRepository, sqliteRepo SqliteRepository, pomodoroDuration, shortBreakDuration, longBreakDuration time.Duration) *SessionService {
@@ -73,21 +75,39 @@ func NewSession(repo InMemoryRepository, sqliteRepo SqliteRepository, pomodoroDu
 	}
 }
 
-func (s *SessionService) GetInfos() (string, error) {
+func (s *SessionService) AddActivity(a model.Activity) error {
+	return s.SqliteRepo.AddActivity(a)
+}
+
+func (s *SessionService) GetInfos() (string, string, error) {
 	pomodoros, err := s.SqliteRepo.GetHistory()
 	if err == sql.ErrNoRows {
-		return "", nil
+		return "", "", nil
 	}
 
 	if err != nil {
-		return "", err
+		return "", "", err
+	}
+
+	activities, err := s.SqliteRepo.GetActivities()
+	if err == sql.ErrNoRows {
+		return "", "", nil
+	}
+
+	if err != nil {
+		return "", "", err
 	}
 
 	var history string
+	var activitiesString string
 	for _, p := range pomodoros {
 		history += fmt.Sprintf("     🍅 %.0f minutes (%v)\n", (p.PlannedDuration - p.ActualDuration).Minutes(), p.Starttime.Format(time.DateTime))
 	}
-	return history, nil
+	for _, a := range activities {
+		activitiesString += fmt.Sprintf("   🟢 %s (%v)\n", a.Message, a.CompletedAt.Format(time.DateTime))
+	}
+
+	return history, activitiesString, nil
 }
 
 func (s *SessionService) Decrement(update CallbackFunc) error {
@@ -121,7 +141,7 @@ func (s *SessionService) Decrement(update CallbackFunc) error {
 		currentPlannedDuration = s.LongBreakDuration
 	}
 
-	update(s.SessionType, durationToDisplayString(currentPlannedDuration), "")
+	update(s.SessionType, durationToDisplayString(currentPlannedDuration), "", "")
 	return nil
 }
 
@@ -146,7 +166,7 @@ func (s *SessionService) Increment(update CallbackFunc) error {
 		currentPlannedDuration = s.LongBreakDuration
 	}
 
-	update(s.SessionType, durationToDisplayString(currentPlannedDuration), "")
+	update(s.SessionType, durationToDisplayString(currentPlannedDuration), "", "")
 	return nil
 }
 
@@ -254,7 +274,7 @@ func durationToDisplayString(d time.Duration) string {
 	return fmt.Sprintf("%s:%s", minutesString, secondsString)
 }
 
-type CallbackFunc func(sessionState, timerString, history string)
+type CallbackFunc func(sessionState, timerString, history, activities string)
 
 func (s *SessionService) tick(ctx context.Context, update CallbackFunc) error {
 	t := time.NewTicker(1 * time.Second)
@@ -268,7 +288,7 @@ func (s *SessionService) tick(ctx context.Context, update CallbackFunc) error {
 
 	for {
 		select {
-		case <-t.C:
+		case ti := <-t.C:
 			p, err := s.Repo.Last()
 			if err != nil {
 				return err
@@ -279,8 +299,17 @@ func (s *SessionService) tick(ctx context.Context, update CallbackFunc) error {
 			if p.State == int(Running) {
 				p.ActualDuration += time.Second
 			}
+
+			var activities string
+			if ti.Second()%utils.UpdateActivityIntervalSecond == 0 {
+				_, activities, err = s.GetInfos()
+				if err != nil {
+					return err
+				}
+
+			}
 			currentTimer := p.PlannedDuration - p.ActualDuration
-			update(s.SessionType, durationToDisplayString(currentTimer), "")
+			update(s.SessionType, durationToDisplayString(currentTimer), "", activities)
 			if err := s.Repo.Update(p); err != nil {
 				return err
 			}
@@ -291,9 +320,6 @@ func (s *SessionService) tick(ctx context.Context, update CallbackFunc) error {
 			}
 			p.State = int(Finished)
 
-			if err := s.SqliteRepo.Add(p); err != nil {
-				return err
-			}
 			return s.Repo.Update(p)
 		case <-expire:
 			p, err := s.Repo.Last()
@@ -309,11 +335,11 @@ func (s *SessionService) tick(ctx context.Context, update CallbackFunc) error {
 				return err
 			}
 
-			infos, err := s.GetInfos()
+			history, activities, err := s.GetInfos()
 			if err != nil {
 				return err
 			}
-			update(s.SessionType, "", infos)
+			update(s.SessionType, "", history, activities)
 
 			return s.Repo.Update(p)
 		}
